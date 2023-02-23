@@ -1,0 +1,40 @@
+# ContainerBuildAndDeploy.yml
+parameters:
+- name: containerName
+  type: string
+  default: mycontainer
+- name: containerRegistry
+  type: string
+  default: myregistry
+
+jobs:
+- job: Build
+  steps:
+  - task: Docker@2
+    inputs:
+      command: build
+      containerRegistry: $(containerRegistry)
+      tags: |
+        $(Build.BuildId)
+
+- job: Deploy
+  dependsOn: Build
+  steps:
+  - task: Docker@2
+    inputs:
+      command: push
+      containerRegistry: $(containerRegistry)
+      tags: |
+        $(Build.BuildId)
+
+- job: Release
+  dependsOn: Deploy
+  steps:
+  - task: KubernetesManifest@0
+    inputs:
+      action: deploy
+      manifests: |
+        k8s/*.yaml
+      namespace: $(Namespace)
+      containers: |
+        $(containerRegistry)/$(containerName):$(Build.BuildId)
