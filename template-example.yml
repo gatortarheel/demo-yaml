@@ -1,0 +1,6 @@
+resources:
+  pipeline:
+    - template: ContainerBuildAndDeploy.yml
+      parameters:
+        containerName: mycontainer
+        containerRegistry: myregistry
