@@ -1,0 +1,28 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'windows-latest'
+
+steps:
+- task: DotNetCoreCLI@2
+  displayName: 'Build solution'
+  inputs:
+    command: 'build'
+    projects: '**/*.csproj'
+    arguments: '--configuration Release'
+
+- task: CopyFiles@2
+  displayName: 'Copy service package to deployment folder'
+  inputs:
+    SourceFolder: '$(Build.ArtifactStagingDirectory)'
+    Contents: '**\bin\Release\net5.0\publish\*'
+    TargetFolder: '\\target-machine\deployment-folder'
+    CleanTargetFolder: true
+
+- task: PowerShellOnTargetMachines@3
+  displayName: 'Install Windows service'
+  inputs:
+    scriptType: 'FilePath'
+    scriptPath: 'install-service.ps1'
+    targetMachines: 'target-machine'
