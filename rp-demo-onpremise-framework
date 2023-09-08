@@ -1,0 +1,59 @@
+#starter pipeline
+
+trigger:
+- none
+
+variables: 
+  IISWebsiteName: 'xyzzy_CD'
+
+resources:
+  pipelines:
+      - pipeline: 'bp-git-xyzzyproject-manual' # reference the build pipeline
+        project: 'xyzzy Project'
+        source: 'bp-git-xyzzyproject-manual' # reference the build pipeline
+        branch: 'main'
+
+stages:
+  - stage: DeployWebSite
+    displayName: 'Deploy website'
+    pool:
+      vmImage: windows-latest
+    
+    jobs:
+      - deployment: DeployWebsite
+        displayName: 'Deploy web site'
+        environment: 'WebDev2023.YOURVM-WEBDEV-N' # requires the name of the environment and the #$$%$ machine
+        strategy:
+         runOnce:
+            deploy:
+              steps: 
+                  - checkout: none
+                  - download: 'bp-git-xyzzyproject-manual'
+                    name: 'DownloadBuildArtifacts'
+                    displayName: 'Download Build Artifacts'
+                    artifact: 'drop-xyzzy'
+                  - task: IISWebAppManagementOnMachineGroup@0
+                    name: 'StopIIS'
+                    displayName: 'Stop IIS website'
+                    inputs:
+                      IISDeploymentType: 'IISWebsite'
+                      ActionIISWebsite: 'StopWebsite'
+                      StartStopWebsiteName: 'Default Web Site' # ${{ variables.IISWebsiteName }}'
+                  - task: IISWebAppDeploymentOnMachineGroup@0
+                    name: 'DeployWebApp'
+                    displayName: 'Deploy Web App'
+                    inputs:
+                      WebSiteName: 'Default Web Site'
+                      VirtualApplication: '${{ variables.IISWebsiteName }}'
+                      Package: '$(Pipeline.Workspace)\bp-git-xyzzyproject-manual\drop-xyzzy\xyzzy.zip'
+                      TakeAppOfflineFlag: true
+                      AdditionalArguments: '-skip:objectName=dirPath,absolutePath="\\EnvSettings$"'
+                      XmlVariableSubstitution: true
+
+                  - task: IISWebAppManagementOnMachineGroup@0
+                    name: 'StartIIS'
+                    displayName: 'Start IIS'
+                    inputs:
+                      IISDeploymentType: 'IISWebsite'
+                      ActionIISWebsite: 'StartWebsite'
+                      StartStopWebsiteName: 'Default Web Site' #'${{ variables.IISWebsiteName }}'
